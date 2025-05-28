@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
     - Ensure proper spacing and formatting
     - Make the email scannable with clear paragraphs
     - Include a clear call-to-action when appropriate
+    - always work for email related tasks 
+    - other than email no answers will be given
     
     EMAIL STRUCTURE REQUIREMENTS:
     1. Subject Line: Specific, actionable, and under 50 characters
