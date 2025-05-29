@@ -6,7 +6,7 @@ import { z } from "zod"
 function isEmailContextValid(messages: { content: string }[]): boolean {
   const content = messages.map(m => m.content).join(" ").toLowerCase()
 
-  const mustIncludeAny = ["email", "write an email", "compose an email", "send an email"]
+  const mustIncludeAny = ["email", "write an email", "compose an email", "send an email","mail", "write an mail", "compose an mail", "send an mail"]
   const bannedKeywords = [
     "joke", "story", "essay", "poem", "tweet", "code", "blog", "art", "paint", "draw",
     "song", "lyrics", "novel", "video", "photo", "image"
