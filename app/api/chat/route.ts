@@ -25,13 +25,14 @@ export async function POST(req: Request) {
 
   // ✅ Enforce email-only usage
   if (!isEmailContextValid(messages)) {
-    return new Response(
-      JSON.stringify({
-        error:
-          "❌ This assistant only helps with writing emails. Please provide a prompt related to composing, improving, or sending an email.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    )
+   return new Response(
+  JSON.stringify({
+    role: "assistant",
+    content: "📧 This assistant only helps with writing emails. Please describe the email you want help with.",
+  }),
+  { status: 200, headers: { "Content-Type": "application/json" } }
+)
+
   }
 
   const openrouter = createOpenRouter({
