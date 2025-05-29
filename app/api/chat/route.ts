@@ -2,12 +2,38 @@ import { streamText, tool } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { z } from "zod"
 
+// Simple email-only context filter
+function isEmailContextValid(messages: { content: string }[]): boolean {
+  const content = messages.map(m => m.content).join(" ").toLowerCase()
+
+  const mustIncludeAny = ["email", "write an email", "compose an email", "send an email"]
+  const bannedKeywords = [
+    "joke", "story", "essay", "poem", "tweet", "code", "blog", "art", "paint", "draw",
+    "song", "lyrics", "novel", "video", "photo", "image"
+  ]
+
+  const isClearlyEmail = mustIncludeAny.some(keyword => content.includes(keyword))
+  const isClearlyNotEmail = bannedKeywords.some(keyword => content.includes(keyword))
+
+  return isClearlyEmail && !isClearlyNotEmail
+}
+
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   const { messages } = await req.json()
 
-  // Create OpenRouter provider instance
+  // ✅ Enforce email-only usage
+  if (!isEmailContextValid(messages)) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "❌ This assistant only helps with writing emails. Please provide a prompt related to composing, improving, or sending an email.",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
   const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY!,
   })
@@ -15,7 +41,9 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openrouter.chat("meta-llama/llama-3.3-8b-instruct:free"),
     messages,
-    system: `You are an expert email writing assistant. You help users create professional, well-crafted emails for any situation.
+    system: `IMPORTANT: You ONLY assist users with composing or refining EMAILS. Do NOT respond to any requests that are not related to writing emails. If the user asks something unrelated, reply with: "Sorry, I can only help with writing professional emails."
+
+You are an expert email writing assistant. You help users create professional, well-crafted emails for any situation.
 
 CONVERSATION STYLE:
 - Ask ONE question at a time to avoid overwhelming users
@@ -36,21 +64,7 @@ When you generate a complete email, you MUST:
 1. Always wrap the email in the exact format: \`\`\`email ... \`\`\`
 2. Always include a subject line starting with "Subject:"
 3. Include proper greeting, body, and closing
-4. Make sure the email is complete and ready to send
-
-IMPORTANT: Ask only ONE question per response unless you have enough information to generate the email. Be conversational and helpful.
-
-When you generate a complete email, format it EXACTLY like this:
-\`\`\`email
-Subject: [Subject Line]
-
-[Greeting]
-
-[Email Body with proper paragraphs]
-
-[Professional Closing]
-[Your Name]
-\`\`\``,
+4. Make sure the email is complete and ready to send`,
     tools: {
       generateEmail: tool({
         description: "Generate a professional email based on the provided context and requirements",
@@ -92,10 +106,8 @@ Make it polished, actionable, and ready to send. Ensure proper spacing between s
 
             const emailContent = await text
 
-            // Ensure the email is properly formatted
             let formattedEmail = emailContent.trim()
 
-            // Add Subject line if missing
             if (!formattedEmail.includes("Subject:")) {
               const lines = formattedEmail.split("\n")
               const firstLine = lines[0].trim()
@@ -134,11 +146,9 @@ You can copy this email and use it right away, or let me know if you'd like me t
           readyToGenerate: z.boolean().describe("Whether we have enough information to generate the email"),
         }),
         execute: async ({ gatheredInfo, nextQuestionNeeded, readyToGenerate }) => {
-          if (readyToGenerate) {
-            return "Ready to generate email with gathered information."
-          } else {
-            return `Next question to ask: ${nextQuestionNeeded}`
-          }
+          return readyToGenerate
+            ? "Ready to generate email with gathered information."
+            : `Next question to ask: ${nextQuestionNeeded}`
         },
       }),
     },
