@@ -1,8 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
+import { emailOnlyGuard } from "@/lib/middleware/emailonlyguard"
+
 
 export async function POST(request: NextRequest) {
+   const guardResponse = await emailOnlyGuard(request)
+  if (guardResponse) return guardResponse
+
   try {
     const { context, purpose, tone, recipient, language } = await request.json()
 
