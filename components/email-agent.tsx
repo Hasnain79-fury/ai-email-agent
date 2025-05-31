@@ -24,6 +24,49 @@ export default function EmailAgent() {
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
   const [generatedEmails, setGeneratedEmails] = useState<EmailResult[]>([])
 
+  const handleSend = async () => {
+  if (!input.trim()) return
+
+  const userMessage = { role: "user", content: input }
+  setMessages((prev) => [...prev, userMessage])
+  setInput("")
+  setLoading(true)
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [...messages, userMessage] }),
+    })
+
+    const data = await res.json()
+
+    // Always treat the response as a new assistant message
+    if (data.content && data.role === "assistant") {
+      setMessages((prev) => [...prev, { role: "assistant", content: data.content }])
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "❌ Something went wrong. Please try again.",
+        },
+      ])
+    }
+  } catch (err) {
+    console.error(err)
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: "❌ Server error. Please try again later.",
+      },
+    ])
+  }
+
+  setLoading(false)
+}
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
     api: "/api/chat",
     maxSteps: 5,
